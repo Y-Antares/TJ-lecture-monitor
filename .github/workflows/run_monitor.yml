@@ -1,0 +1,40 @@
+name: Lecture Hall Monitor
+
+on:
+  schedule:
+    # 使用 UTC 时间（cron 表达式）。此处代表每天 0:00 到 13:00（即北京时间 8:00 到 21:00）每 15 分钟运行一次
+    - cron: '*/15 0-13 * * *'
+  workflow_dispatch: # 允许在 GitHub 网页上手动点击按钮触发
+
+jobs:
+  check-lectures:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 运行监控脚本
+        env:
+          SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }}
+          SESSION_ID: ${{ secrets.SESSION_ID }}
+          WEIXIN_CODE_ID: ${{ secrets.WEIXIN_CODE_ID }}
+        run: python main.py
+
+      - name: 自动保存更新后的历史记录到仓库
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add known_lectures.json
+          git commit -m "auto: update known lectures history [skip ci]" || exit 0
+          git push
